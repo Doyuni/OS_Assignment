@@ -1,0 +1,6 @@
+Digital Systems
+Discrete Mathematics
+Computer Programming
+Data Structures
+Computer Architecture
+Operating Systems
