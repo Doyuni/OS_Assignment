@@ -1,0 +1,15 @@
+/home/groot/Documents/OS_assignment/A2/PA1
+backup.c
+bash
+Big_Fan_of_jafffy.txt
+Big_Fan_Of_KO.txt
+docs
+in
+Makefile
+Manhattan.txt
+README.md
+scripts
+src
+students.txt
+tash
+your

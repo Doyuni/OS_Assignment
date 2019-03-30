@@ -1,0 +1,27 @@
+파일을 읽을 수 없습니다.
+make[1]: Entering directory '/home/groot/workspace/PA0'
+gcc -std=c99 -o course_sched course_sched.c
+make[1]: Leaving directory '/home/groot/workspace/PA0'
+make[1]: Entering directory '/home/groot/workspace/PA0'
+./course_sched ./in/everytime0.csv
+Computer Programming
+Digital Systems
+Discrete Mathematics
+Data Structures
+Computer Architecture
+Operating Systems
+./course_sched ./in/everytime1.csv
+Digital Systems
+Discrete Mathematics
+Computer Programming
+Data Structures
+Computer Architecture
+Operating Systems
+./course_sched ./in/everytime2.csv
+Digital Systems
+Computer Programming
+Discrete Mathematics
+Data Structures
+Computer Architecture
+Operating Systems
+make[1]: Leaving directory '/home/groot/workspace/PA0'
