@@ -7,8 +7,7 @@
 
 #include <unistd.h>
 #include <fcntl.h> // open()
-// 입력버퍼를 프로세스 생성 이전에 비워주어야 하며 sleep을 걸어 버퍼가 기다릴 시간을 마련해준다.
-
+//  built in command와 아닌 것을 for문으로 구분하여 간단하게 코드를 작성할 수 있다. 
 // file redirection: >
 int fileOut(char * file, char* string) { 
     int fdout = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -19,7 +18,7 @@ int fileOut(char * file, char* string) {
     close(fdout);
 }
 // file redirection: <
-int fileIn(char *file, char* string) {
+int fileIn(char *file) {
 	int fdin = open(file, O_RDONLY | O_CREAT, 0644);
 	dup2(fdin, STDIN_FILENO);
 	close(fdin);
@@ -29,11 +28,9 @@ int main()
 	pid_t pid; 
 	char buf[4096];
 	while (fgets(buf, 4096, stdin)) {
-		
 		buf[strlen(buf)-1] = '\0'; // fgets로 받으면 '\n' 개행문자까지 받기에 개행문자 지우는 역할
 		if (strncmp(buf, "pwd", 3) == 0) {
 			fflush(stdin);
-			sleep(1);
 			pid = fork();
 			int status;
 			if (pid == -1) {
@@ -55,9 +52,7 @@ int main()
 			}
 		} else if (strncmp(buf, "ls", 2) == 0 || strncmp(buf, "/bin/ls", 7) == 0) {
 			fflush(stdin);
-			sleep(1);
 			pid = fork();
-			int status;
 			if(pid == -1) {
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
@@ -70,8 +65,7 @@ int main()
 				execlp("/bin/ls", "ls", NULL);
 				exit(EXIT_SUCCESS);
 			} else {
-				waitpid(pid, &status, WNOHANG);
-				
+				wait(NULL); // 자식 프로세스 기다리기
 			}
 		} else if (strncmp(buf, "cd", 2) == 0) {
 			char *token = strtok(buf, " \n");
@@ -81,7 +75,7 @@ int main()
 			} else if(strncmp(token, "~", 1) == 0) {
 				char path[4096];
 				strcpy(path, getenv("HOME"));
-				
+				// ~를 HOME 경로로 바꿔주고 기존 경로에 붙이는 작업
 				int len = strlen(token) + strlen(path);
 				int path_len = strlen(path);
 				for (int i = 0; i < len - 1; i++)
@@ -91,15 +85,12 @@ int main()
 				path[path_len + len] = '\0';
 				strcpy(token, path);
 			}
-
 			if (chdir(token))
 			{
 				fprintf(stderr, "Change error\n");
 			}
-
 		} else if (strncmp(buf, "~/", 2) == 0) {
 			fflush(stdin);
-			sleep(1);
 			pid = fork();
 			int status;
 			if(pid == -1) {
@@ -118,7 +109,6 @@ int main()
 					}
 				}
 				path[path_len + len] = '\0';
-				int index = 0;
 				execl(path, path, NULL);
 				exit(EXIT_SUCCESS);
 			} else {
@@ -126,9 +116,7 @@ int main()
 			}
 		} else if (strncmp(buf, "echo", 4) == 0) {
 			fflush(stdin);
-			sleep(1);
 			pid = fork();
-			int status;
 			if(pid == -1) {
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
@@ -152,13 +140,11 @@ int main()
 				execl("/bin/echo", "echo", value, NULL);
 				exit(EXIT_SUCCESS);
 			} else {
-				waitpid(pid, &status, WNOHANG);
+				wait(NULL);
 			}
 		} else if(strncmp(buf, "make", 4) == 0) {
 			fflush(stdin);
-			sleep(1);
 			pid = fork();
-			int status;
 			if(pid == -1) {
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
@@ -172,14 +158,11 @@ int main()
 				}
 				exit(EXIT_SUCCESS);
 			} else {
-				
-				waitpid(pid, &status, WNOHANG);
+				wait(NULL); 
 			}
 		} else if(strncmp(buf, "grep", 4) == 0) {
 			fflush(stdin);
-			sleep(1);
 			pid = fork();
-			int status;
 			char *token;
 			char value[1024];
 			if(pid == -1) {
@@ -192,23 +175,71 @@ int main()
 				strcpy(value, token);
 				if(find_ch != NULL) {
 					token = strtok(NULL, "< \n");
-					fileIn(token, value);
+					fileIn(token);
 				}
 				execlp("/bin/grep", "grep", value, NULL);
 				exit(EXIT_SUCCESS);
 			} else {
-				waitpid(pid, &status, WNOHANG);
+				wait(NULL);
 			}
 		} else if(strncmp(buf, "alias", 5) == 0) {
 			fflush(stdin);
-			sleep(1);
-			char *aliases_file;
+			char aliases_file[4096];
 			strcpy(aliases_file, getenv("HOME"));
 			strcat(aliases_file, "/.bash_aliases");
 			int fd = open(aliases_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
 			dup2(fd, STDOUT_FILENO);
 			printf("%s\n", buf);
 			close(fd);
+// 		fopen으로 쓰고 
+			pid = fork();
+			int status;
+			
+		} else if(strcmp(buf, "ready-to-score ./2019-1-PA0/") == 0) {
+			fflush(stdin);
+			pid = fork();
+			if(pid == -1) {
+				fprintf(stderr, "Error occured\n");
+				exit(EXIT_FAILURE);
+			} else if(pid == 0) {	
+				char project_path[4096];
+				getcwd(project_path, 4096);
+				strcat(project_path, "/scripts/ready-to-score.py");
+				execlp("python3", project_path, project_path, "./2019-1-PA0", NULL);
+				exit(EXIT_SUCCESS);
+			} else {
+				wait(NULL);
+			}
+		} else if(strcmp(buf, "auto-grade-pa0 ./2019-1-PA0/") == 0) {
+			fflush(stdin);
+			pid = fork();
+			if(pid == -1) {
+				fprintf(stderr, "Error occured\n");
+				exit(EXIT_FAILURE);
+			} else if(pid == 0) {	
+				char project_path[4096];
+				getcwd(project_path, 4096);
+				strcat(project_path, "/scripts/auto-grade-pa0.py");
+				execlp("python3", project_path, project_path, "./2019-1-PA0", NULL);
+				exit(EXIT_SUCCESS);
+			} else {
+				wait(NULL);
+			}
+		} else if(strcmp(buf, "report-grade ./2019-1-PA0/") == 0) {
+			fflush(stdin);
+			pid = fork();
+			if(pid == -1) {
+				fprintf(stderr, "Error occured\n");
+				exit(EXIT_FAILURE);
+			} else if(pid == 0) {	
+				char project_path[4096];
+				getcwd(project_path, 4096);
+				strcat(project_path, "/scripts/report-grade.py");
+				execlp("python3", project_path, project_path, "./2019-1-PA0", NULL);
+				exit(EXIT_SUCCESS);
+			} else {
+				wait(NULL);
+			}
 		} else if(strncmp(buf, "exit", 4) == 0) {
 			exit(0);
 		}
@@ -216,6 +247,5 @@ int main()
 			printf("I don't know what you said: %s", buf);
 		}
 	}
-	sleep(1);
 	return 0;
 }
