@@ -1,26 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include <sys/types.h>
 #include <sys/wait.h>
-
 #include <unistd.h>
 #include <fcntl.h> // open()
-//  built in command와 아닌 것을 for문으로 구분하여 간단하게 코드를 작성할 수 있다. 
 // file redirection: >
 int fileOut(char * file, char* string) { 
-    int fdout = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    dup2(fdout, STDOUT_FILENO);
+	// O_TRUNC 옵션으로 덮어쓰기 
+    int fdout = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644); 
+    dup2(fdout, STDOUT_FILENO); // file에 stdout 역할 할당
 	if(strlen(string) > 0) {
-		printf("%s\n", string);
+		printf("%s\n", string); // file에 string 쓰기
 	}
     close(fdout);
 }
 // file redirection: <
 int fileIn(char *file) {
 	int fdin = open(file, O_RDONLY | O_CREAT, 0644);
-	dup2(fdin, STDIN_FILENO);
+	dup2(fdin, STDIN_FILENO); // file에 stdin 역할 할당 (파일 읽기)
 	close(fdin);
 }
 int main()
@@ -32,7 +30,7 @@ int main()
 	while (fgets(buf, 4096, stdin)) {
 		buf[strlen(buf)-1] = '\0'; // fgets로 받으면 '\n' 개행문자까지 받기에 개행문자 지우는 역할
 		if (strncmp(buf, "pwd", 3) == 0) {
-			fflush(stdin);
+			fflush(stdin); // 입력 버퍼 비워주기
 			pid = fork();
 			int status;
 			if (pid == -1) {
@@ -40,7 +38,7 @@ int main()
 				exit(EXIT_FAILURE);
 			} else if (pid == 0) {
 				char working_directory_name[4096];
-				getcwd(working_directory_name, 4096);
+				getcwd(working_directory_name, 4096); // 현재 디렉터리 경로 얻기
 				if(strcmp(buf, "pwd") == 0) {
 					printf("%s\n", working_directory_name);
 				} else if(strncmp(buf, "pwd >", 5) == 0) {
@@ -73,7 +71,7 @@ int main()
 			char *token = strtok(buf, " \n");
 			token = strtok(NULL, " \n");
 			if(strcmp(token, "~") == 0) {
-				strcpy(token, getenv("HOME"));
+				strcpy(token, getenv("HOME")); // 환경변수 HOME의 값 얻기
 			} else if(strncmp(token, "~", 1) == 0) {
 				char path[4096];
 				strcpy(path, getenv("HOME"));
@@ -87,7 +85,7 @@ int main()
 				path[path_len + len] = '\0';
 				strcpy(token, path);
 			}
-			if (chdir(token))
+			if (chdir(token)) // 현재 경로 변경하기
 			{
 				fprintf(stderr, "Change error\n");
 			}
@@ -125,14 +123,14 @@ int main()
 			} else if(pid == 0) {
 				char value[500];
 				char *token;
-				if(strncmp(buf, "echo $", 6) == 0) {				
+				if(strncmp(buf, "echo $", 6) == 0) {	// 환경변수 값 처리			
 					token = strtok(buf, " \n");
 					token = strtok(NULL, "$\n");
 					strcpy(value, getenv(token));
 				} else {
 					char *find_ch = strchr(buf, '>');
 					token = strtok(buf, " \n");
-					token = strtok(NULL, "\"\n");
+					token = strtok(NULL, "\"\n"); // ""가 포함된 문자열에서 "" 제거
 					strcpy(value, token);
 					if(find_ch != NULL) {
 						token = strtok(NULL, "> \n");
@@ -223,11 +221,11 @@ int main()
 			} else {
 				wait(NULL);
 			}
-		} else if(strncmp(buf, "exit", 4) == 0) {
+		} else if(strncmp(buf, "exit", 4) == 0) { // 종료 명령어
 			exit(0);
 		}
 		else {
-			printf("I don't know what you said: %s\n", buf);
+			printf("I don't know what you said: %s", buf);
 		}
 	}
 	return 0;

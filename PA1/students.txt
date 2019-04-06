@@ -1,3 +1,5 @@
+채점기능1.png
+2019-1-PA0
 채점기능2.png
 backup.c
 bash
@@ -8,7 +10,6 @@ in
 Makefile
 make_test.png
 Manhattan.txt
-채점기능.png
 README.md
 scripts
 src
