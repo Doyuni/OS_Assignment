@@ -225,7 +225,7 @@ int main()
 			exit(0);
 		}
 		else {
-			printf("I don't know what you said: %s", buf);
+			printf("I don't know what you said: %s\n", buf);
 		}
 	}
 	return 0;
