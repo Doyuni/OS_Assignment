@@ -7,6 +7,7 @@
 
 #include <unistd.h>
 #include <fcntl.h> // open()
+//  built in command와 아닌 것을 for문으로 구분하여 간단하게 코드를 작성할 수 있다. 
 // file redirection: >
 int fileOut(char * file, char* string) { 
     int fdout = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -17,7 +18,7 @@ int fileOut(char * file, char* string) {
     close(fdout);
 }
 // file redirection: <
-int fileIn(char *file, char* string) {
+int fileIn(char *file) {
 	int fdin = open(file, O_RDONLY | O_CREAT, 0644);
 	dup2(fdin, STDIN_FILENO);
 	close(fdin);
@@ -27,7 +28,6 @@ int main()
 	pid_t pid; 
 	char buf[4096];
 	while (fgets(buf, 4096, stdin)) {
-		
 		buf[strlen(buf)-1] = '\0'; // fgets로 받으면 '\n' 개행문자까지 받기에 개행문자 지우는 역할
 		if (strncmp(buf, "pwd", 3) == 0) {
 			fflush(stdin);
@@ -75,7 +75,7 @@ int main()
 			} else if(strncmp(token, "~", 1) == 0) {
 				char path[4096];
 				strcpy(path, getenv("HOME"));
-				
+				// ~를 HOME 경로로 바꿔주고 기존 경로에 붙이는 작업
 				int len = strlen(token) + strlen(path);
 				int path_len = strlen(path);
 				for (int i = 0; i < len - 1; i++)
@@ -92,6 +92,7 @@ int main()
 		} else if (strncmp(buf, "~/", 2) == 0) {
 			fflush(stdin);
 			pid = fork();
+			int status;
 			if(pid == -1) {
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
@@ -108,7 +109,6 @@ int main()
 					}
 				}
 				path[path_len + len] = '\0';
-				int index = 0;
 				execl(path, path, NULL);
 				exit(EXIT_SUCCESS);
 			} else {
@@ -175,7 +175,7 @@ int main()
 				strcpy(value, token);
 				if(find_ch != NULL) {
 					token = strtok(NULL, "< \n");
-					fileIn(token, value);
+					fileIn(token);
 				}
 				execlp("/bin/grep", "grep", value, NULL);
 				exit(EXIT_SUCCESS);
@@ -191,7 +191,7 @@ int main()
 			dup2(fd, STDOUT_FILENO);
 			printf("%s\n", buf);
 			close(fd);
-
+// 		dup2쓸 필요 없이 fopen으로 쓰고 사용해보자
 			pid = fork();
 			int status;
 			
@@ -249,4 +249,3 @@ int main()
 	}
 	return 0;
 }
-

@@ -26,6 +26,8 @@ int fileIn(char *file) {
 int main()
 {
 	pid_t pid; 
+	char project_path[4096]; 
+	getcwd(project_path, 4096); // 프로젝트 경로 저장(python script 실행위해 쓰임)
 	char buf[4096];
 	while (fgets(buf, 4096, stdin)) {
 		buf[strlen(buf)-1] = '\0'; // fgets로 받으면 '\n' 개행문자까지 받기에 개행문자 지우는 역할
@@ -182,19 +184,6 @@ int main()
 			} else {
 				wait(NULL);
 			}
-		} else if(strncmp(buf, "alias", 5) == 0) {
-			fflush(stdin);
-			char aliases_file[4096];
-			strcpy(aliases_file, getenv("HOME"));
-			strcat(aliases_file, "/.bash_aliases");
-			int fd = open(aliases_file, O_WRONLY | O_CREAT | O_APPEND, 0644);
-			dup2(fd, STDOUT_FILENO);
-			printf("%s\n", buf);
-			close(fd);
-// 		fopen으로 쓰고 
-			pid = fork();
-			int status;
-			
 		} else if(strcmp(buf, "ready-to-score ./2019-1-PA0/") == 0) {
 			fflush(stdin);
 			pid = fork();
@@ -202,8 +191,6 @@ int main()
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
 			} else if(pid == 0) {	
-				char project_path[4096];
-				getcwd(project_path, 4096);
 				strcat(project_path, "/scripts/ready-to-score.py");
 				execlp("python3", project_path, project_path, "./2019-1-PA0", NULL);
 				exit(EXIT_SUCCESS);
@@ -217,8 +204,6 @@ int main()
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
 			} else if(pid == 0) {	
-				char project_path[4096];
-				getcwd(project_path, 4096);
 				strcat(project_path, "/scripts/auto-grade-pa0.py");
 				execlp("python3", project_path, project_path, "./2019-1-PA0", NULL);
 				exit(EXIT_SUCCESS);
@@ -232,8 +217,6 @@ int main()
 				fprintf(stderr, "Error occured\n");
 				exit(EXIT_FAILURE);
 			} else if(pid == 0) {	
-				char project_path[4096];
-				getcwd(project_path, 4096);
 				strcat(project_path, "/scripts/report-grade.py");
 				execlp("python3", project_path, project_path, "./2019-1-PA0", NULL);
 				exit(EXIT_SUCCESS);
@@ -244,7 +227,7 @@ int main()
 			exit(0);
 		}
 		else {
-			printf("I don't know what you said: %s", buf);
+			printf("I don't know what you said: %s\n", buf);
 		}
 	}
 	return 0;
