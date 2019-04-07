@@ -1,15 +1,11 @@
-/home/groot/Documents/OS_A/OS_Assignment/PA1
-채점기능1.png
+/home/groot/Documents/OS_A/submit/OS_Assignment/PA1
 2019-1-PA0
-채점기능2.png
-backup.c
 bash
 Big_Fan_of_jafffy.txt
 Big_Fan_Of_KO.txt
 docs
 in
 Makefile
-make_test.png
 Manhattan.txt
 README.md
 scripts
