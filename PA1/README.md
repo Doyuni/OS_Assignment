@@ -76,4 +76,5 @@ TA Mr.Choi는 채점을 위한 script를 작성했지만, 작성한 script들을
 ## 채점 결과
 ![maketest](./make_test.png)
 ## 채점 기능 테스트
-![score](./채점기능1.png)
+![score1](./채점기능1.png)
+![score2](./채점기능2.png)
