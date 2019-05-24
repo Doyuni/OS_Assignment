@@ -16,10 +16,15 @@ int fileOut(char * file, char* string) {
     close(fdout);
 }
 // file redirection: <
-int fileIn(char *file) {
-	int fdin = open(file, O_RDONLY | O_CREAT, 0644);
-	dup2(fdin, STDIN_FILENO); // file에 stdin 역할 할당 (파일 읽기)
-	close(fdin);
+void fileIn(char *file) {
+	int fdin;
+	if(0 < (fdin = open(file, O_RDONLY, 0644))) {
+		dup2(fdin, STDIN_FILENO); // file에 stdin 역할 할당 (파일 읽기)
+		close(fdin);
+	} else {
+		printf("%s: No such file or directory\n", file);
+		exit(EXIT_FAILURE);
+	}
 }
 int main()
 {
