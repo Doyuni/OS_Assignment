@@ -2,12 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
 #include <sys/queue.h>
-// gdb로 debug해보는게 좋다.
-// 멀티 프로세싱 디버그는 힘들기에 각 스레드마다 log를 남기는게 좋다. print 할 때 시간을 정확히 찍는 식으로
-
-// static 
+#include <pthread.h>
+#include <sys/time.h>
+// sys queue 부분
 static LIST_HEAD(listhead, entry) head; // singly linked list (tail이 null로 끝남)
 
 struct listhead *headp = NULL;
@@ -15,177 +13,264 @@ struct listhead *headp = NULL;
 
 int num_entries = 0;
 
-struct entry {
-	char name[BUFSIZ];
-	int frequency;
-	LIST_ENTRY(entry) entries; // link를 의미 entries 구조체
+struct entry
+{
+  char name[BUFSIZ];
+  int frequency;
+  LIST_ENTRY(entry)
+  entries; // link를 의미 entries 구조체
 };
 
-int main(int argc, char** argv)
+//
+static char *buf;
+static int buf_len = 0;
+
+static char *buf_for_parallel;
+
+static char buf2_for_parallel[4096] = {
+    0,
+};
+const int k_num_thread = 4;
+static int counter = 0;
+static pthread_mutex_t counter_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int file_size = 0;
+int portion_size = 0;
+int extra_size = 0;
+FILE *fp;
+
+void *parallel_str_transform(void *arg)
 {
-	if (argc != 2) {
-		fprintf(stderr, "%s: not enough input\n", argv[0]);
-		exit(1);
-	}
+  int portion_size, start, end;
+  int tid = *(int *)(arg); // get the thread ID assigned sequentially.
+  start = tid * portion_size;
+  end = (tid + 1) * portion_size;
+  // pthread_mutex_lock(&counter_mutex);
+  // pthread_mutex_unlock(&counter_mutex);
+  for (int i = start; i < end; ++i)
+  {
+    if (!isalnum(buf[i]))
+    {
+      buf_for_parallel[i] = ' ';
+    }
+    else
+    {
+      buf_for_parallel[i] = tolower(buf[i]);
+    }
+  }
+  if (tid == k_num_thread - 1)
+  { // 나머지 처리 (스레드 개수랑 나누어 떨어지지 않을 때)
+    start = end;
+    end = file_size;
+    for (int i = start; i < end; ++i)
+    {
+      if (!isalnum(buf[i]))
+      {
+        buf_for_parallel[i] = ' ';
+      }
+      else
+      {
+        buf_for_parallel[i] = tolower(buf[i]);
+      }
+    }
+  }
+  pthread_exit(0);
+}
 
-	FILE* fp = fopen(argv[1], "r");
-	char buf[4096];
+// void *parallel_str_token(void *changed_buf)
+// {
+//   strcpy(buf2_for_parallel, (char *)changed_buf);
 
-	LIST_INIT(&head); // list 사용 가능
-// 단계별로 나누어서 단계별로 병렬화 시켜도 될듯
-// 1. File read
-// 2. Preprocessing
-// 3. Tokenizing -> 지금은 naive, 원래 형태소 분석하면서 해야함
-// 4. Counting
-// 5. Print
-// pipelining(단, 4-5단계는 하기 힘들다.)
-// MapReduce
-// thread = 2
-// t0
-// A 1
-// B 1
-// B 1
-// -> A : 1 B : 2
-// t1
-// A 1
-// B 1
-// C 1
-// C 1
-// -> A : 1 B : 1 C : 2
+//   pthread_mutex_lock(&counter_mutex);
+//   int id = counter++;
+//   pthread_mutex_unlock(&counter_mutex);
 
-// 이걸 또 섞어
+//   tok = strtok(buf2_for_parallel, WHITE_SPACE);
+//   do
+//   {
+//     if (tok == NULL || strcmp(tok, "") == 0)
+//       continue;
+//     printf("thread %d tok : %s\n", id, tok);
+//   } while (tok = strtok(NULL, WHITE_SPACE));
+// }
 
-// t0'
-// A : 1
-// C : 2
+int main()
+{
+  fp = fopen("./data/therepublic.txt", "r");
 
-// t1'
-// A : 1
-// B : 2
-// B : 1
-// -> A : 1 B : 3
-	while (fgets(buf, 4096, fp)) {
-		// Preprocess: change all non-alnums into white-space,
-		//             alnums to lower-case.
-		int line_length = strlen(buf);
+  if (!fp)
+  {
+    fprintf(stderr, "Failed to open ./data/strings.txt\n");
+    exit(1);
+  }
+  struct timeval tstart, tend;
+  double exectime;
 
-		for (int it = 0; it < line_length; ++it) {
-			if (!isalnum(buf[it])) {
-				buf[it] = ' ';
-			} else {
-				buf[it] = tolower(buf[it]);
-			}
-		}
+  fseek(fp, 0, SEEK_END);
+  file_size = ftell(fp);
+  portion_size = file_size / k_num_thread;
+  extra_size = file_size % k_num_thread;
+  // printf("file size : %d\n", file_size);
+  buf_for_parallel = malloc(sizeof(char) * file_size);
+  buf = malloc(sizeof(char) * file_size);
+  fseek(fp, 0, SEEK_SET);
 
-    // Tokenization
-		const char* WHITE_SPACE =" \t\n";
-		char* tok = strtok(buf, WHITE_SPACE);
+  fread(buf, file_size, 1, fp);
+  // Parallel
+  gettimeofday( &tstart, NULL );
+  pthread_t pid[k_num_thread];
+  
+  for (int i = 0; i < k_num_thread; ++i)
+  {
+    int *tid;
+    tid = (int *)malloc(sizeof(int));
+    *tid = i;
+    pthread_create(&pid[i], NULL, parallel_str_transform, (void *)tid);
+  }
 
-		if (tok == NULL || strcmp(tok, "") == 0) {
+  for (int i = 0; i < k_num_thread; ++i)
+  {
+    pthread_join(pid[i], NULL);
+  }
+
+  // for (int i = 0; i < k_num_thread; ++i)
+  // {
+  //   pthread_create(&pid[i], NULL, parallel_str_token, (void*)buf_for_parallel);
+  // }
+
+  // for (int i = 0; i < k_num_thread; ++i)
+  // {
+  //   pthread_join(pid[i], NULL);
+  // }
+
+  // printf("%s\n", buf_for_parallel);
+
+  LIST_INIT(&head);
+
+  const char *WHITE_SPACE = " \t\n";
+  char* tok = strtok(buf_for_parallel, WHITE_SPACE);
+
+  //token
+
+  do
+  {
+    // 이걸 더 깔끔하게 바꿀 수 있을 것임
+    	if (tok == NULL || strcmp(tok, "") == 0) {
 			continue;
 		}
 
-		do {
-      // 이걸 더 깔끔하게 바꿀 수 있을 것임
-      if (num_entries == 0) {
-        struct entry* e = malloc(sizeof(struct entry));
+    if (num_entries == 0)
+    {
+      struct entry *e = malloc(sizeof(struct entry));
 
-        strncpy(e->name, tok, strlen(tok)); // copy string
+      strncpy(e->name, tok, strlen(tok)); // copy string
+      e->frequency = 1;
+
+      LIST_INSERT_HEAD(&head, e, entries);
+      num_entries++;
+      continue;
+    }
+    else if (num_entries == 1)
+    {
+      int cmp = strcmp(tok, head.lh_first->name);
+
+      if (cmp == 0)
+      {
+        head.lh_first->frequency++;
+      }
+      else if (cmp > 0)
+      {
+        struct entry *e = malloc(sizeof(struct entry));
+
+        strncpy(e->name, tok, strlen(tok));
         e->frequency = 1;
 
-        LIST_INSERT_HEAD(&head, e, entries);
+        LIST_INSERT_AFTER(head.lh_first, e, entries);
         num_entries++;
-        continue;
-      } else if (num_entries == 1) {
-        int cmp = strcmp(tok, head.lh_first->name);
-
-        if (cmp == 0) {
-          head.lh_first->frequency++;
-        } else if (cmp > 0) {
-          struct entry* e = malloc(sizeof(struct entry));
-
-          strncpy(e->name, tok, strlen(tok));
-          e->frequency = 1;
-
-
-          LIST_INSERT_AFTER(head.lh_first, e, entries);
-          num_entries++;
-        } else if (cmp < 0) {
-          struct entry* e = malloc(sizeof(struct entry));
-
-          strncpy(e->name, tok, strlen(tok));
-          e->frequency = 1;
-
-          LIST_INSERT_HEAD(&head, e, entries);
-          num_entries++;
-        }
-
-        continue;
       }
-
-      // Reduce: actual word-counting
-      struct entry* np = head.lh_first;
-      struct entry* final_np = NULL;
-
-      int last_cmp = strcmp(tok, np->name); // 삽입정렬을 사용하였기에 아래 부분(앞에가 정렬되어 있다는 전제) 
-
-      if (last_cmp < 0) { // tok이 name의 이전에 와야한다.
-        struct entry* e = malloc(sizeof(struct entry));
+      else if (cmp < 0)
+      {
+        struct entry *e = malloc(sizeof(struct entry));
 
         strncpy(e->name, tok, strlen(tok));
         e->frequency = 1;
 
         LIST_INSERT_HEAD(&head, e, entries);
         num_entries++;
+      }
 
-        continue;
+      continue;
+    }
 
-      } else if (last_cmp == 0) {
+    // Reduce: actual word-counting
+    struct entry *np = head.lh_first;
+    struct entry *final_np = NULL;
+
+    int last_cmp = strcmp(tok, np->name); // 삽입정렬을 사용하였기에 아래 부분(앞에가 정렬되어 있다는 전제)
+
+    if (last_cmp < 0)
+    { // tok이 name의 이전에 와야한다.
+      struct entry *e = malloc(sizeof(struct entry));
+
+      strncpy(e->name, tok, strlen(tok));
+      e->frequency = 1;
+
+      LIST_INSERT_HEAD(&head, e, entries);
+      num_entries++;
+
+      continue;
+    }
+    else if (last_cmp == 0)
+    {
+      np->frequency++;
+
+      continue;
+    }
+    // 삽입 정렬 -> 병렬화를 했을 때 가능한지 봐야함
+    for (np = np->entries.le_next; np != NULL; np = np->entries.le_next)
+    {
+      int cmp = strcmp(tok, np->name);
+
+      if (cmp == 0)
+      {
         np->frequency++;
-
-        continue;
+        break;
       }
-      // 삽입 정렬 -> 병렬화를 했을 때 가능한지 봐야함
-      for (np = np->entries.le_next; np != NULL; np = np->entries.le_next) {
-        int cmp = strcmp(tok, np->name);
-
-        if (cmp == 0) {
-          np->frequency++;
-          break;
-        } else if (last_cmp * cmp < 0) { // sign-crossing occurred,  A B D E 에 C를 넣고 싶을 때  cmp하면 1 1 -1 에서 1 * -1이면 즉 부호가 바뀜
-          struct entry* e = malloc(sizeof(struct entry));
-
-          strncpy(e->name, tok, strlen(tok));
-          e->frequency = 1;
-
-          LIST_INSERT_BEFORE(np, e, entries);
-          num_entries++;
-
-          break;
-        }
-
-        if (np->entries.le_next == NULL) {
-          final_np = np;
-        } else {
-          last_cmp = cmp;
-        }
-      }
-
-      if (!np && final_np) { // 맨 마지막에 넣어줌, 마지막 tail이 NULL이기에 prev를 찾을 방법이 필요
-        struct entry* e = malloc(sizeof(struct entry));
+      else if (last_cmp * cmp < 0)
+      { // sign-crossing occurred,  A B D E 에 C를 넣고 싶을 때  cmp하면 1 1 -1 에서 1 * -1이면 즉 부호가 바뀜
+        struct entry *e = malloc(sizeof(struct entry));
 
         strncpy(e->name, tok, strlen(tok));
         e->frequency = 1;
 
-        LIST_INSERT_AFTER(final_np, e, entries);
+        LIST_INSERT_BEFORE(np, e, entries);
         num_entries++;
-      }
-    } while (tok = strtok(NULL, WHITE_SPACE));
-  }
 
-  // 위의 word counting이 더 중요...
-  // Print the counting result very very slow way.
-  // 병렬화하면 print 구문은 어차피 바꿔야 함
+        break;
+      }
+
+      if (np->entries.le_next == NULL)
+      {
+        final_np = np;
+      }
+      else
+      {
+        last_cmp = cmp;
+      }
+    }
+
+    if (!np && final_np)
+    { // 맨 마지막에 넣어줌, 마지막 tail이 NULL이기에 prev를 찾을 방법이 필요
+      struct entry *e = malloc(sizeof(struct entry));
+
+      strncpy(e->name, tok, strlen(tok));
+      e->frequency = 1;
+
+      LIST_INSERT_AFTER(final_np, e, entries);
+      num_entries++;
+    }
+  } while (tok = strtok(NULL, WHITE_SPACE));
+
   int max_frequency = 0;
 
   for (struct entry* np = head.lh_first; np != NULL; np = np->entries.le_next) {
@@ -203,13 +288,18 @@ int main(int argc, char** argv)
       }
     }
   }
-
+  gettimeofday( &tend, NULL );
+  exectime = (tend.tv_sec - tstart.tv_sec) * 1000.0; // sec to ms
+  exectime += (tend.tv_usec - tstart.tv_usec) / 1000.0; // us to ms   
+  printf( "Number of threads: %d\tExecution time:%.3lf sec\n",
+          k_num_thread, exectime/1000.0);
   // Release
   while (head.lh_first != NULL) {
     LIST_REMOVE(head.lh_first, entries);
   }
-
+  
   fclose(fp);
 
   return 0;
 }
+
