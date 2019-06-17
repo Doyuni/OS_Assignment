@@ -127,7 +127,6 @@ void page_fault_handler(uint8_t page_num)
   for(int i = 0; i < 256; ++i) {
     phy_mem[page_num*256+i] = buf[i]; // because of one frame size 256
   }
-  printf("\n");
   // write data in page table
   page_table[page_num].is_valid = 1;
   page_table[page_num].frame_num = page_num;
