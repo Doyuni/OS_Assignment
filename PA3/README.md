@@ -15,7 +15,7 @@ Mr. Kim은 시험 공부를 하던 중, demand paging이 잘 이해가 가지 �
 
 ## Virtual address의 구조
 
-![](https://github.com/AjouOSTA/PA3/blob/master/images/address-format.png)
+![](./images/address-format.png)
 CREDIT:  Silberschatz et al, "Operating System Concepts", 9th
 
 뒤의 16 bit만을 masking 한 뒤, page number와 offset을 얻어낸다.
@@ -24,7 +24,7 @@ CREDIT:  Silberschatz et al, "Operating System Concepts", 9th
 
 ## 흐름도
 
-![](https://github.com/AjouOSTA/PA3/blob/master/images/flowchart.png)
+![](./images/flowchart.png)
 CREDIT:  Silberschatz et al, "Operating System Concepts", 9th
 
 # 주요 함수
