@@ -128,3 +128,12 @@ year 1
     - Extra point
         - Amazon Web Services EC2의 a1.xlarge (4 vCPU, 8 MiB, EBS) 기준 각 반의 분석속도 Top 5에게는 extra point 50%
         - 채점 방식: 전체 채점 5회 돌린 후 elapsed time 평균값
+___________________________________________________________
+
+## Result
+### owl.txt - 0.597 second
+![](./owl.png)
+### therepublic.txt - 0.861 second
+![](./therepublic.png)
+### wiki.txt - 205.382 second (about 3 minute)
+![](./wiki.png)
