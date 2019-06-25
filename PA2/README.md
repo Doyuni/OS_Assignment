@@ -132,7 +132,7 @@ ___________________________________________________________
 
 ## Result
 ### owl.txt - 0.597 second
-![](./owl.png)
+![](./owl1.png)
 ### therepublic.txt - 0.861 second
 ![](./therepublic.png)
 ### wiki.txt - 205.382 second (about 3 minute)
