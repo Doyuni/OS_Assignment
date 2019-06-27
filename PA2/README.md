@@ -131,6 +131,7 @@ year 1
 ___________________________________________________________
 
 ## Result
+#### 필자는 Top 5에 들어 extra point 50 % 획득하였음.
 ### owl.txt - 0.597 second
 ![](./owl1.png)
 ### therepublic.txt - 0.861 second
